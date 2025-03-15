@@ -1,0 +1,35 @@
+sequenceDiagram
+    participant Caller
+    participant VOIP_System
+    participant Audio_Processor
+    participant Whisper_Transcriber
+    participant Classification_Model
+    participant Manual_Labeler
+    participant Fingerprint_DB
+    participant Miltering_Service
+
+    %% Call initiation and audio capture
+    Caller->>VOIP_System: Initiate Call
+    VOIP_System->>Audio_Processor: Capture Raw Audio Data
+
+    %% Transcription step using OpenAI Whisper
+    Audio_Processor->>Whisper_Transcriber: Transcribe Audio
+    Whisper_Transcriber-->>Audio_Processor: Transcribed Text
+
+    %% Classification step using fine-tuned Whisper with classification head
+    Audio_Processor->>Classification_Model: Analyze Transcription (and Audio)
+    Classification_Model-->>Audio_Processor: Prediction + Confidence Score
+
+    %% Decision branch based on confidence level
+    alt High Confidence Prediction
+        Audio_Processor->>Fingerprint_DB: Log Call Fingerprint (Label: SPAM/SCAM or HAM)
+    else Low Confidence Prediction
+        Audio_Processor->>Manual_Labeler: Request Review (Provide Audio, Transcription, Prediction)
+        Manual_Labeler-->>Audio_Processor: Confirm/Correct Label
+        Audio_Processor->>Classification_Model: Send Feedback for Retraining
+        Audio_Processor->>Fingerprint_DB: Log Updated Call Fingerprint
+    end
+
+    %% Miltering service uses fingerprint DB for future calls
+    Fingerprint_DB->>Miltering_Service: Provide Fingerprint Data
+    Miltering_Service-->>VOIP_System: Apply Miltering on Incoming Calls
