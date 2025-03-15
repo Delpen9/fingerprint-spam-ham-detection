@@ -1,0 +1,28 @@
+flowchart TD
+    %% In-Sample Training
+    ISData[Raw Call Data] --> ISRawAudio[Capture Audio Call Data]
+    ISRawAudio --> ISTranscribe[Transcribe Audio using OpenAI Whisper]
+    ISTranscribe --> ISLabeling[Manually Label Transcribed Data]
+    ISLabeling -- y-label --> WhisperModel[Fine-Tune OpenAI Whisper Model with Classification Head]
+    ISRawAudio -- X-input --> WhisperModel
+
+    %% Out-of-Sample Inferencing
+    OSData[Out-of-Sample Call Data] --> OSRawAudio[Capture Raw Audio Data]
+    OSRawAudio --> OSClassified[Classify Raw Audio using Fine-Tuned OpenAI Whisper Model]
+    OSClassified --> OSConfidence{Is Confidence Score High?}
+
+    %% Training to Inference
+    WhisperModel --> OSClassified
+
+    %% High Confidence Case
+    OSConfidence -- Yes --> OSLogged[Log Call Fingerprint with Labels]
+    OSLogged --> FingerprintDB[Update Fingerprint Database]
+    FingerprintDB --> MilteringService[Miltering Service Uses Fingerprints for Future Filtering]
+
+    %% Low Confidence Case
+    OSConfidence -- No --> OSReview[Send to Manual Labeler for Review]
+    OSReview --> OSLabeled[Listen, Evaluate, and Confirm/Correct Label]
+    OSLabeled --> OSModelTrainSamples[Retrain with Low Confidence Samples]
+
+    %% Retraining Process
+    OSModelTrainSamples -- Active Learning --> WhisperModel
